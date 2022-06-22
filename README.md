@@ -14,6 +14,7 @@ cd CMSSW_12_2_0/src
 git clone --branch py3 git@github.com:danbarto/RootTools.git
 
 git clone git@github.com:<YOUR_USER>/chronos.git
+cd chronos
 git remote add upstream git@github.com:danbarto/chronos.git
 ```
 
@@ -40,6 +41,7 @@ Add conda to the end of ~/.bashrc, so relogin after executing this line
 
 Stop conda from activating the base environment on login
 ```
+bash
 conda config --set auto_activate_base false
 conda config --add channels conda-forge
 ```
@@ -59,7 +61,12 @@ conda create --name timing python=3.9.7 ipython uproot boost-histogram coffea ju
 In order to use jupyter you need to run the following:
 
 ```
+conda install ipykernel
 python -m ipykernel install --user --name=timing
+
+pip install ipywidgets
+jupyter contrib nbextesnion install --user
+jupyter nbextension enable varInspector/main
 jupyter nbextension install --py widgetsnbextension --user
 jupyter nbextension enable widgetsnbextension --user --py
 ```
