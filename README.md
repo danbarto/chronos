@@ -79,6 +79,12 @@ ssh YOUR_USER@uaf-10.t2.ucsd.edu -L 8007:localhost:8007
 
 Then on the uaf
 
+to add the local path to your python path run (in this directory)
+``` shell
+source setup.sh
+```
+
+to start the jupyter server
 ``` shell
 ( conda activate timing && jupyter notebook --no-browser --port 8007 )
 ```
