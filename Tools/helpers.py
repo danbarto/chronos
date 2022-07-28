@@ -2,6 +2,7 @@
 
 import awkward as ak
 import numpy as np
+import os
 
 def get_four_vec_fromPtEtaPhiM(cand, pt, eta, phi, M, copy=True):
     '''
@@ -53,3 +54,9 @@ def match(first, second, deltaRCut=0.4):
     drCut2 = deltaRCut**2
     combs = ak.cartesian([first, second], nested=True)
     return ak.any((delta_r2(combs['0'], combs['1'])<drCut2), axis=2)
+
+def finalizePlotDir( path ):
+    path = os.path.expandvars(path)
+    if not os.path.isdir(path):
+        os.makedirs(path)
+    shutil.copy( os.path.expandvars( '$TIMEHOME/Tools/php/index.php' ), path )
