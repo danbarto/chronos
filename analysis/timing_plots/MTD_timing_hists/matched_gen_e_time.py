@@ -1,5 +1,23 @@
-exec(open("/home/users/hswanson13/CMSSW_12_2_0/src/chronos/analysis/timing_plots/config_plots.py").read())
+import warnings
+warnings.filterwarnings("ignore")
 
+import numpy as np
+import coffea
+
+from coffea.nanoevents import NanoEventsFactory, BaseSchema
+
+import matplotlib.pyplot as plt
+import mplhep as hep #matplotlib wrapper for easy plotting in HEP
+plt.style.use(hep.style.CMS)
+
+import awkward as ak #just lets you do lists but faster i guess
+
+from coffea.nanoevents.methods import vector
+ak.behavior.update(vector.behavior)
+
+import boost_histogram as bh
+
+from Tools.helpers import get_four_vec_fromPtEtaPhiM, delta_phi, cross, delta_r, delta_r2, choose, match, finalizePlotDir
 events0mm = NanoEventsFactory.from_root(
     '/home/users/hswanson13/CMSSW_11_3_1_patch1/src/Phase2Timing/Phase2TimingAnalyzer/python/ntuple_phase2timing0mm.root',
     schemaclass = BaseSchema,
@@ -106,9 +124,11 @@ tdiff0 = tdiff_calc(e_time0, ge0_vec4, MTDCellTime0, MTDCluTime0, reco_photon_ve
 
 
 bin_start = 0
-bin_end = 4
-n_bins = 20
+bin_end = 3 
+n_bins = 15
 bin_width = (bin_end - bin_start)/n_bins
+
+print(bin_start)
 
 gen_e_arrs = [np.clip(ak.flatten(tdiff1000[3]),bin_start,bin_end-.02),np.clip(ak.flatten(tdiff100[3]),bin_start,bin_end-.02),np.clip(ak.flatten(tdiff0[3]),bin_start,bin_end-.02)]
 
@@ -139,5 +159,6 @@ hep.cms.label("Preliminary",data=False,lumi='X',com=14,loc=0,ax=ax,fontsize=15,)
 ax.set_ylabel(r'Counts')
 ax.set_xlabel(xlabel, fontsize=18)
 plt.legend(loc=0)
+finalizePlotDir('/home/users/hswanson13/public_html/MTD_timing_hists/')
 
-fig.savefig('/home/users/hswanson13/public_html/MTD_timing_hists/matched_gen_e_time.png')
+fig.savefig('/home/users/hswanson13/public_html/MTD_timing_hists/matched_gen_e_time2.png')

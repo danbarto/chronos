@@ -1,4 +1,25 @@
-exec(open("/home/users/hswanson13/CMSSW_12_2_0/src/chronos/analysis/timing_plots/config_plots.py").read())
+import warnings
+warnings.filterwarnings("ignore")
+
+import numpy as np
+import coffea
+
+from coffea.nanoevents import NanoEventsFactory, BaseSchema
+
+import matplotlib.pyplot as plt
+import mplhep as hep #matplotlib wrapper for easy plotting in HEP
+plt.style.use(hep.style.CMS)
+
+import awkward as ak #just lets you do lists but faster i guess
+
+from coffea.nanoevents.methods import vector
+ak.behavior.update(vector.behavior)
+
+import boost_histogram as bh
+
+from Tools.helpers import get_four_vec_fromPtEtaPhiM, delta_phi, cross, delta_r, delta_r2, choose, match, finalizePlotDir
+
+
 
 events0mm = NanoEventsFactory.from_root(
     '/home/users/hswanson13/CMSSW_11_3_1_patch1/src/Phase2Timing/Phase2TimingAnalyzer/python/ntuple_phase2timing0mm.root',
@@ -105,9 +126,9 @@ tdiff100 = tdiff_calc(e_time100, ge100_vec4, MTDCellTime100, MTDCluTime100, reco
 tdiff0 = tdiff_calc(e_time0, ge0_vec4, MTDCellTime0, MTDCluTime0, reco_photon_vec40)
 
 
-bin_start = 0
-bin_end = 4
-n_bins = 20
+bin_start = -5
+bin_end = 6
+n_bins = 15
 bin_width = (bin_end - bin_start)/n_bins
 
 pm_1000 = np.clip(ak.flatten(tdiff1000[2]), bin_start,bin_end-.02)
@@ -143,4 +164,5 @@ ax.set_ylabel(r'Counts')
 ax.set_xlabel(xlabel, fontsize=18)
 plt.legend(loc=0)
 
-fig.savefig('/home/users/hswanson13/public_html/MTD_timing_hists/matched_reco_photons_time.png')
+finalizePlotDir('/home/users/hswanson13/public_html/MTD_timing_hists/')
+fig.savefig('/home/users/hswanson13/public_html/MTD_timing_hists/matched_reco_photons_time2.png')
