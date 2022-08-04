@@ -126,19 +126,19 @@ mtd_etl_vec4 = ak.zip({"pt": np.zeros_like(phi_etl_hits),"eta": eta_etl_hits,"ph
 def dR_adjust_matching(x,y,z,theta,time,energy, mtd_vec4, photon_vec4, dR_range):
 
     #main matching of photon and gen e
-    mp_cart = ak.cartesian([mtd_vec4, photon_vec4]) #not nested, axis=1
+    pm_cart = ak.cartesian([photon_vec4,mtd_vec4]) #not nested, axis=1
 
-    mt_cart = ak.cartesian([mtd_vec4,time]) #ALERT!! ALERT!! I BELIEVE THIS MATCHING IS WRONG!! 
-    mth_cart = ak.cartesian([mtd_vec4,theta]) #HAVE TO THINK OF A BETTER APPROACH
-    me_cart = ak.cartesian([mtd_vec4,energy]) #NEEDS TO BE A FOUR VECTOR TO MATCH CORRECTLY
-    mx_cart = ak.cartesian([mtd_vec4,x]) #I WONDER WHAT OTHER MATCHING HAS GONE WRONG
-    my_cart = ak.cartesian([mtd_vec4,y])
-    mz_cart = ak.cartesian([mtd_vec4,z])
+    mt_cart = ak.cartesian([photon_vec4,time]) #ALERT!! ALERT!! I BELIEVE THIS MATCHING IS WRONG!! 
+    mth_cart = ak.cartesian([photon_vec4,theta]) #HAVE TO THINK OF A BETTER APPROACH
+    me_cart = ak.cartesian([photon_vec4,energy]) #NEEDS TO BE A FOUR VECTOR TO MATCH CORRECTLY
+    mx_cart = ak.cartesian([photon_vec4,x]) #I WONDER WHAT OTHER MATCHING HAS GONE WRONG
+    my_cart = ak.cartesian([photon_vec4,y])
+    mz_cart = ak.cartesian([photon_vec4,z])
     
     mean_photon_times = []
     for dR in dR_range:
         #Create a mask, True if less than 0.4 and True if more
-        dRmask = np.absolute(delta_r(mp_cart['0'], mp_cart['1'])) < dR 
+        dRmask = np.absolute(delta_r(pm_cart['0'], pm_cart['1'])) < dR 
 
         #applying the mask, same dims as the combo but False just removes the ones w <0.4 dR
         mch_time = (mt_cart[dRmask])['1'] #get the time matched (from mask) info
@@ -179,4 +179,4 @@ plt.xlabel('dR', fontsize=18)
 plt.legend([r"$c\tau$=1000mm " , r"$c\tau$=0mm "], ncol = 2, loc="lower right",markerscale=5,frameon=True,fancybox=True)
 
 finalizePlotDir('/home/users/hswanson13/public_html/MTD_timing_hists/')
-fig.savefig('/home/users/hswanson13/public_html/MTD_timing_hists/dR_noise_correlation.png')
+fig.savefig('/home/users/hswanson13/public_html/MTD_timing_hists/dR_noise_correlation2.png')

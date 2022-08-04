@@ -20,7 +20,6 @@ import boost_histogram as bh
 from Tools.helpers import get_four_vec_fromPtEtaPhiM, delta_phi, cross, delta_r, delta_r2, choose, match, finalizePlotDir
 
 
-
 events0mm = NanoEventsFactory.from_root(
     '/home/users/hswanson13/CMSSW_11_3_1_patch1/src/Phase2Timing/Phase2TimingAnalyzer/python/ntuple_phase2timing0mm.root',
     schemaclass = BaseSchema,
@@ -102,14 +101,16 @@ def tdiff_calc(e_time, ge_vec4, TCell, TClu, reco_photon_vec4):
     #main matching of photon and gen e
     pe_cart = ak.cartesian([reco_photon_vec4, ge_vec4]) #not nested, axis=1
 
+    #ep_cart = ak.cartesian([ge_vec4,reco_photon_vec4])
+
     #timing matching
     te_cartCell = ak.cartesian([TCell, ge_vec4]) #how to take in account the -50 numbers???
     te_cartClu = ak.cartesian([TClu, ge_vec4])    #how to take in account the -50 numbers, dont??
     ge_time_cart = ak.cartesian([reco_photon_vec4, e_time])
 
     #Create a mask, True if less than 0.4 and True if more
-    dRmask = delta_r(pe_cart['0'], pe_cart['1']) < 0.4
-
+    dRmask = delta_r(pe_cart['0'], pe_cart['1']) < 0.4 #change dR here
+    dRmask2 = delta_r(ep_cart['0'], ep_cart['1']) < 0.4
     #applying the mask, same dims as the combo but False just removes the ones w <0.4 dR
     mch_timeCell = (te_cartCell[dRmask])['0'] #cluster time of a matched photon, bec of loop over photons in C++
     mch_timeClu = (te_cartClu[dRmask])['0']   #cell time of a matched photon
@@ -126,9 +127,9 @@ tdiff100 = tdiff_calc(e_time100, ge100_vec4, MTDCellTime100, MTDCluTime100, reco
 tdiff0 = tdiff_calc(e_time0, ge0_vec4, MTDCellTime0, MTDCluTime0, reco_photon_vec40)
 
 
-bin_start = -5
-bin_end = 6
-n_bins = 15
+bin_start = -1
+bin_end = 30
+n_bins = 20
 bin_width = (bin_end - bin_start)/n_bins
 
 pm_1000 = np.clip(ak.flatten(tdiff1000[2]), bin_start,bin_end-.02)
@@ -138,6 +139,7 @@ pm_arrs = [pm_1000,pm_100,pm_0]
 
 names = [r'$c\tau$=1000mm',r'$c\tau$=100mm',r'$c\tau$=0mm']
 colors = ['b','r','g']
+fig, ax = plt.subplots(figsize=(8, 8))
 
 arrs = pm_arrs
 xlabel = 'Matched Reco Photon Time'
@@ -149,7 +151,6 @@ for arr in arrs:
     area = sum(hist.counts()) #bin_width*hist.counts(), guess not! haha works
     histograms.append(hist)
 
-fig, ax = plt.subplots(figsize=(8, 8))
 hep.histplot([hist.counts() for hist in histograms],
         binning,
         histtype="step",
@@ -165,4 +166,4 @@ ax.set_xlabel(xlabel, fontsize=18)
 plt.legend(loc=0)
 
 finalizePlotDir('/home/users/hswanson13/public_html/MTD_timing_hists/')
-fig.savefig('/home/users/hswanson13/public_html/MTD_timing_hists/matched_reco_photons_time2.png')
+fig.savefig('/home/users/hswanson13/public_html/MTD_timing_hists/matched_reco_photons_time4.png')

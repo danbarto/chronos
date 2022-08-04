@@ -86,18 +86,27 @@ mtd_btl_vec4 = ak.zip({"pt": np.zeros_like(phi_btl_hits),"eta": eta_btl_hits,"ph
 
 def match_photons(mtd_vec4,eta_hits, phi_hits, photon_vec4,dR):
     mp_cart = ak.cartesian([mtd_vec4, photon_vec4]) #not nested, axis=1
-
-    #met_cart = ak.cartesian([mtd_vec4, eta_hits]) 
-    #mph_cart = ak.cartesian([mtd_vec4, phi_hits])
-
-    dRmask = np.absolute(delta_r(mp_cart['0'], mp_cart['1'])) < dR 
     
+    pm_cart = ak.cartesian([mtd_vec4,photon_vec4], nested=True)
+    # met_cart = ak.cartesian([eta_hits, photon_vec4]) 
+    # mph_cart = ak.cartesian([phi_hits, photon_vec4])
+    
+    dRmask = np.absolute(delta_r(mp_cart['0'], mp_cart['1'])) < dR 
     mch_p_eta = (mp_cart[dRmask])['1'].eta
     mch_p_phi = (mp_cart[dRmask])['1'].phi
+    
+    # mch_eta2 = (met_cart[dRmask])['0']
+    # mch_phi2 = (mph_cart[dRmask])['0']
 
-    mch_phi = (mp_cart[dRmask])['0'].phi 
-    mch_eta = (mp_cart[dRmask])['0'].eta  
+    #mch_eta = (mp_cart[dRmask])['0'].eta #duplicates just make code slower?? not fake data????
+    #mch_phi = (mp_cart[dRmask])['0'].phi #I say this bec cart is not nested and taking the first
 
+    #testing if duplicates matter!
+    dRmask_nest = np.absolute(delta_r(pm_cart['0'], pm_cart['1'])) < dR
+    filt_eta = pm_cart[dRmask_nest]['0'].eta
+    filt_phi = pm_cart[dRmask_nest]['0'].phi
+    mch_eta = (mtd_vec4[ ak.num(filt_eta, axis=-1)>0 ]).eta
+    mch_phi = (mtd_vec4[ ak.num(filt_phi, axis=-1)>0 ]).phi
     return [mch_eta, mch_phi, mch_p_eta, mch_p_phi]
 
 #run the function for all btl, etl events!
@@ -123,47 +132,36 @@ counter = 0
 s_n = 1 #sample number 0 for 0mm, 1 for 100mm, 2 for 1000mm    
 
 for event in range(len(eta_etl_hits100)):
-    #fig.patch.set_facecolor('#ADD8E6')
     plt.title(fr'$c\tau$=100mm $h\to XX\to 4e$: Eta vs Phi for Event {counter}', fontsize = 18)
     fig, ax = plt.subplots(figsize=(8, 8))
     ax = fig.gca()
+    
     #plot all hits from mtd
     plt.scatter(ak.to_numpy(all_eta_etl_hits[s_n][event]), ak.to_numpy(all_phi_etl_hits[s_n][event]), c='grey', s=8)
     plt.scatter(ak.to_numpy(all_eta_btl_hits[s_n][event]), ak.to_numpy(all_phi_btl_hits[s_n][event]), c='grey', s=8)
+    
     #plot all matched mtd hits
     plt.scatter(ak.to_numpy(etl_matches[s_n][0][event]), ak.to_numpy(etl_matches[s_n][1][event]), c='red', s=8)
     plt.scatter(ak.to_numpy(btl_matches[s_n][0][event]), ak.to_numpy(btl_matches[s_n][1][event]), c='red', s=8)
-    #plot photon matches
-    plt.scatter(ak.to_numpy(etl_matches[s_n][2][event]), ak.to_numpy(etl_matches[s_n][3][event]), c='blue', s=8)
-    plt.scatter(ak.to_numpy(btl_matches[s_n][2][event]), ak.to_numpy(btl_matches[s_n][3][event]), c='blue', s=8)
     
+    #plot photon matches
+    plt.scatter(ak.to_numpy(etl_matches[s_n][2][event]), ak.to_numpy(etl_matches[s_n][3][event]), c='blue', s=8, marker=(5,1))
+    plt.scatter(ak.to_numpy(btl_matches[s_n][2][event]), ak.to_numpy(btl_matches[s_n][3][event]), c='blue', s=8, marker=(5,1))
 
-    #print(f'before loop: {counter}')
-    for emEta,emPhi in zip(etl_matches[s_n][2][event], etl_matches[s_n][3][event]):
-        eCircle = plt.Circle((emEta, emPhi), 0.4, color='black', fill=False,clip_on=True)
-        #print(f'inner loop 1 {counter}')
-        #print(len(etl_matches[s_n][0][event]))
+    for epEta,epPhi, in zip(etl_matches[s_n][2][event], etl_matches[s_n][3][event]):
+        eCircle = plt.Circle((epEta, epPhi), 0.4, color='black', fill=False,clip_on=True)
         ax.add_patch(eCircle)
 
-    for bmEta,bmPhi in zip(btl_matches[s_n][2][event], btl_matches[s_n][3][event]):
-        bCircle = plt.Circle((bmEta, bmPhi), 0.4, color='black', fill=False,clip_on=True)
+    for bpEta,bpPhi in zip(btl_matches[s_n][2][event], btl_matches[s_n][3][event]):
+        bCircle = plt.Circle((bpEta, bpPhi), 0.4, color='black', fill=False,clip_on=True)
         ax.add_patch(bCircle)
-        #print(f'inner loop 2 {counter}')
-        #print(len(etl_matches[s_n][0][event]))
-        
-    #print(f'after loop {counter}')
     
-    #plt.legend([r"all hits", r"all hits", r"matched mtd hits"], ncol = 1 , loc = "upper right", markerscale = 5,frameon=True,fancybox=True)
     legend_elements = [Line2D([0], [0], marker='o', color='w', label='All MTD Hits', markerfacecolor='grey', markersize=15),
                        Line2D([0], [0], marker='o', color='w', label='Matched MTD Hits', markerfacecolor='red', markersize=15),
                        Line2D([0], [0], marker='o', color='w', label='Matched Photon Hits', markerfacecolor='blue', markersize=15)]
-
     ax.legend(handles=legend_elements,loc='upper right')
+
     finalizePlotDir('/home/users/hswanson13/public_html/MTD_timing_hists/MTD_eta_phi_plots/')
     fig.savefig(f'/home/users/hswanson13/public_html/MTD_timing_hists/MTD_eta_phi_plots/MTD_eta_phi_{str(counter)}.png')
     fig.clear()
     counter += 1
-    if counter == 5:
-        break
-
-print('hi')
