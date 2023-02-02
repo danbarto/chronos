@@ -3,6 +3,7 @@
 import awkward as ak
 import numpy as np
 import os
+import shutil
 
 def get_four_vec_fromPtEtaPhiM(cand, pt, eta, phi, M, copy=True):
     '''
