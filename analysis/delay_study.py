@@ -41,7 +41,9 @@ if __name__ == '__main__':
 
     events1000mm = NanoEventsFactory.from_root(
 #        '/home/users/hswanson13/CMSSW_11_3_1_patch1/src/Phase2Timing/Phase2TimingAnalyzer/python/ntuple_phase2timing1000mm.root',
-        '/home/users/dspitzba/timing/CMSSW_11_3_1_patch1/src/Phase2Timing/ntuple_phase2timing1000mm.root',
+        #'/home/users/dspitzba/timing/CMSSW_11_3_1_patch1/src/Phase2Timing/ntuple_phase2timing1000mm.root',
+        #'/home/users/dspitzba/timing/CMSSW_11_3_1_patch1/src/Phase2Timing/output.root',
+        '/home/users/dspitzba/timing/CMSSW_11_3_1_patch1/src/Phase2Timing/test_pv_1000mm_10k.root',
         schemaclass = BaseSchema,
         treepath='demo/tree',
         entry_stop = 1000).events()
@@ -50,7 +52,7 @@ if __name__ == '__main__':
         'pt': events1000mm['e_pt'],
         'eta': events1000mm['e_eta'],
         'phi': events1000mm['e_phi'],
-        'time': events1000mm['e_ebdelay']*10**9,
+        'time': (events1000mm['e_ebdelay']*(abs(events1000mm['e_eta'])<1.48) + events1000mm['e_hgdelay']*(abs(events1000mm['e_eta'])>1.48))*10**9,
         'ctau': events1000mm['e_ctau']/10,  # I guess this is cm then??
         'mass': np.zeros_like(events1000mm['e_pt']),
         }, with_name="PtEtaPhiMLorentzVector")
@@ -59,7 +61,7 @@ if __name__ == '__main__':
         'pt': events1000mm['reco_photon_pt'],
         'eta': events1000mm['reco_photon_eta'],
         'phi': events1000mm['reco_photon_phi'],
-        'time': events1000mm['reco_photon_MTDtime'],
+        'time': events1000mm['reco_photon_MTDtime'],  # this does not take into account the PV time!
         'mass': np.zeros_like(events1000mm['reco_photon_pt']),
         }, with_name="PtEtaPhiMLorentzVector")
 
@@ -81,8 +83,79 @@ if __name__ == '__main__':
         'energy': events1000mm['gp_energy_btl_hits'],
     }, with_name='ThreeVector')  # checked against gp_phi_btl_hits, gp_theta_btl_hits and agrees
 
+    pv = ak.zip({
+        'x': events1000mm['pv_x'],
+        'y': events1000mm['pv_y'],
+        'z': events1000mm['pv_z'],
+        'time': events1000mm['pv_t'],
+    }, with_name='ThreeVector')
+
+    #gen_pv = ak.zip({
+    #    'x': events1000mm['gen_pv_x'],
+    #    'y': events1000mm['gen_pv_y'],
+    #    'z': events1000mm['gen_pv_z'],
+    #    'time': events1000mm['gen_pv_t'],
+    #}, with_name='ThreeVector')
+
+    lead_pv = ak.flatten(pv[:,:1])
+
     mtd_hits = ak.concatenate([etl_hits, btl_hits], axis=1)
-    mtd_hits['sl'] = (mtd_hits.x**2+mtd_hits.y**2+mtd_hits.z**2)**0.5  # straight line distance in cm
+    mtd_hits['sl'] = ((mtd_hits.x - lead_pv.x)**2+(mtd_hits.y-lead_pv.y)**2+(mtd_hits.z-lead_pv.z)**2)**0.5  # straight line distance in cm
+    mtd_hits['delay'] = (mtd_hits.time - lead_pv.time) - mtd_hits.sl/c
+    mtd_hits['sl_no_pv'] = ((mtd_hits.x)**2+(mtd_hits.y)**2+(mtd_hits.z)**2)**0.5  # straight line distance in cm
+    mtd_hits['delay_no_pv'] = (mtd_hits.time) - mtd_hits.sl_no_pv/c
+
+    # find the closest MTD hit with
+    # reco_photon.nearest(mtd_hits)
+    # if necessary
+
+    deltaR = 0.1
+    matched_photon = reco_photon[match(reco_photon, gen_ele, deltaRCut=0.1)]
+    #matched_mtd = mtd_hits[match(mtd_hits, matched_photon, deltaRCut=deltaR)]
+
+    combs_pho_hit = ak.cartesian([matched_photon, mtd_hits], nested=True)
+    combs_pho_gen = ak.cartesian([matched_photon, gen_ele], nested=True)
+    matched_mtd_to_photon = combs_pho_hit[delta_r(combs_pho_hit['0'], combs_pho_hit['1'])<deltaR]
+    matched_gen_to_photon = combs_pho_gen[delta_r(combs_pho_gen['0'], combs_pho_gen['1'])<0.1]
+
+    # the below calculation is verified against the CMSSW plugin when NOT using the PV correction
+    matched_photon['time_recalc'] = ak.sum(matched_mtd_to_photon['1'].delay*matched_mtd_to_photon['1'].energy*np.sin(matched_mtd_to_photon['1'].theta), axis=2) / ak.sum(matched_mtd_to_photon['1'].energy*np.sin(matched_mtd_to_photon['1'].theta), axis=2)
+    matched_photon['time_recalc_no_pv'] = ak.sum(matched_mtd_to_photon['1'].delay_no_pv*matched_mtd_to_photon['1'].energy*np.sin(matched_mtd_to_photon['1'].theta), axis=2) / ak.sum(matched_mtd_to_photon['1'].energy*np.sin(matched_mtd_to_photon['1'].theta), axis=2)
+    matched_photon['time_gen'] = ak.min(matched_gen_to_photon['1'].time, axis=2)
+
+    time_res_no_pv = ak.flatten(matched_photon.time_gen - ak.nan_to_num(matched_photon.time_recalc_no_pv,0))
+    time_res_no_pv = time_res_no_pv[time_res_no_pv<1000]  # filter out events with weird gen time
+
+    time_res = ak.flatten(matched_photon.time_gen - ak.nan_to_num(matched_photon.time_recalc,0))
+    time_res = time_res[time_res<1000]  # filter out events with weird gen time
+
+    res_axis = hist.axis.Regular(19, -1.9, 1.9, name="time", label=r"time (ns)")
+    time_res_h = hist.Hist(res_axis)
+    time_res_h.fill(time_res)
+
+    time_res_no_pv_h = hist.Hist(res_axis)
+    time_res_no_pv_h.fill(time_res_no_pv)
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+    time_res_h.plot1d(
+            histtype="errorbar",
+            ax=ax,
+            label='PV corr',
+            color='blue',
+        )
+
+    time_res_no_pv_h.plot1d(
+            histtype="errorbar",
+            ax=ax,
+            label='no PV corr',
+            color='red',
+        )
+
+    plt.legend(loc=0)
+    plot_dir = '/home/users/dspitzba/public_html/MTD_timing_hists/'
+
+    hep.cms.label("Preliminary",data=False,lumi='X',com=14,loc=0,ax=ax,fontsize=15,)
+    fig.savefig(f'{plot_dir}/time_resolution.png')
 
     time_axis = hist.axis.Regular(20, 0.0, 10, name="time", label=r"time (ns)")
     ctau_axis = hist.axis.Regular(20, 0.0, 250, name="ctau", label=r"$c\tau$ (cm)")
@@ -108,7 +181,6 @@ if __name__ == '__main__':
 
     plt.legend(loc=0)
 
-    plot_dir = '/home/users/dspitzba/public_html/MTD_timing_hists/'
     finalizePlotDir(plot_dir)
     fig.savefig(f'{plot_dir}/delay.png')
 
